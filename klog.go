@@ -96,6 +96,13 @@ import (
 	"k8s.io/klog/v2/internal/severity"
 )
 
+// add for litekube to calculate caller function name, if BenchDepth=-1, will not give any change
+// if benchDepth>=0, header will record function-name of benchDepth+BenchOffset from process root
+var AddCallerName bool = false
+var BenchDepth int = -1
+var BenchOffset int = 0
+var MaxDepth int = 30
+
 // severityValue identifies the sort of log: info, warning etc. It also implements
 // the flag.Value interface. The -stderrthreshold flag is of type severity and
 // should be modified only through the flag.Value interface. The values match
@@ -549,6 +556,19 @@ func (l *loggingT) header(s severity.Severity, depth int) (*buffer.Buffer, strin
 			if l.addDirHeader {
 				if dirsep := strings.LastIndex(path[:slash], "/"); dirsep >= 0 {
 					file = path[dirsep+1:]
+				}
+			}
+		}
+
+		if AddCallerName {
+			// add caller name
+			ptrs := make([]uintptr, MaxDepth) // max depth
+			if BenchDepth > 0 {
+				realDepth := BenchDepth - 1 + BenchOffset
+				n := runtime.Callers(3+depth, ptrs)
+				if n >= realDepth && realDepth > 0 {
+					f := runtime.FuncForPC(ptrs[n-realDepth])
+					file = fmt.Sprintf("<%s> %s", f.Name(), file)
 				}
 			}
 		}
