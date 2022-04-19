@@ -99,6 +99,7 @@ import (
 // add for litekube to calculate caller function name, if BenchDepth=-1, will not give any change
 // if benchDepth>=0, header will record function-name of benchDepth+BenchOffset from process root
 var AddCallerName bool = false
+var BenchName string = ""
 var BenchDepth int = -1
 var BenchOffset int = 0
 var MaxDepth int = 30
@@ -565,10 +566,18 @@ func (l *loggingT) header(s severity.Severity, depth int) (*buffer.Buffer, strin
 			ptrs := make([]uintptr, MaxDepth) // max depth
 			if BenchDepth > 0 {
 				realDepth := BenchDepth - 1 + BenchOffset
+				bench := BenchDepth - 1
 				n := runtime.Callers(3+depth, ptrs)
 				if n >= realDepth && realDepth > 0 {
-					f := runtime.FuncForPC(ptrs[n-realDepth])
-					file = fmt.Sprintf("<%s> %s", f.Name(), file)
+					if BenchName != "" {
+						if n >= bench && bench > 0 {
+							if runtime.FuncForPC(ptrs[n-bench]).Name() == BenchName {
+								file = fmt.Sprintf("<%s> %s", runtime.FuncForPC(ptrs[n-realDepth]).Name(), file)
+							}
+						}
+					} else {
+						file = fmt.Sprintf("<%s> %s", runtime.FuncForPC(ptrs[n-realDepth]), file)
+					}
 				}
 			}
 		}
